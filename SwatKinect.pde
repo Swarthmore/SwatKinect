@@ -1,10 +1,17 @@
 import SimpleOpenNI.*;
 SimpleOpenNI  kinect;
 
-import ddf.minim.*;
-Minim minim; 
-AudioPlayer player;
+import rwmidi.*;
 
+MidiOutput output;
+
+
+// variables for note generation from keystrike
+// variables for note generation from keystrike
+int aChannel,  sChannel,  dChannel,  fChannel;
+int aNote,     sNote,     dNote,     fNote;
+int aVelocity, sVelocity, dVelocity, fVelocity;
+int aSuccess,  sSuccess,  dSuccess,  fSuccess;
 
 boolean isClapping = false;
 boolean wasClapping = false;
@@ -20,10 +27,15 @@ void setup() {
 
   size(640, 480);
   
-   //initialize the minim object 
-   minim = new Minim(this);
-   // and load the clap file
-   player = minim.loadFile("clap.wav");
+  // just like serial ports, you can list the devices if you like
+  println("output devices");
+  println(RWMidi.getOutputDevices());
+  println("\ninput devices");
+  println(RWMidi.getInputDevices());
+
+
+  // creates a connection to IAC as an output
+  output = RWMidi.getOutputDevices()[0].createOutput();  // talks to MIDI  
   
 }
 
@@ -83,27 +95,78 @@ void draw() {
     
     
     
-     println(distance_between_hands);
+    // println(distance_between_hands);
      
      // Figure out if a clap just occurred
-     if ((!wasClapping && distance_between_hands < 60) || (wasClapping && distance_between_hands < 80)) {
+     if ((!wasClapping && distance_between_hands < 60) || (wasClapping && distance_between_hands < 100)) {
        isClapping =true;
       } else {
         isClapping = false; 
       }
      
      
-     if (!wasClapping && isClapping && !player.isPlaying()){
-       player.play(); 
-     } else {
-       player.rewind();    
-      player.pause();
-     }
+     if (!wasClapping && isClapping){
+        aChannel = 1;
+        aNote = 60;
+        aVelocity = 0;
+        aSuccess = output.sendNoteOn(aChannel, aNote, aVelocity); // note return a variabel of type INT
+        println("Hands together" + aSuccess);
+     } //else if (wasClapping && !isClapping){
+       
+       
+       // Just stopped clapping
+       aNote=60;
+       
+       aVelocity = int(map(distance_between_hands, 0, 1000, 1, 127));
+       
+       //aSuccess = output.sendNoteOff(aChannel, aNote, aVelocity); // note return a variabel of type INT
+       println("Hands apart: " + aVelocity);
+    // }
 
   wasClapping = isClapping;  
     }
 }
 }
+
+
+
+void keyPressed(){
+
+  if (key == 'a' || key == 'A' ) {
+    aChannel = 1;
+    aNote = 60;
+    aVelocity = 127;
+    aSuccess = output.sendNoteOn(aChannel, aNote, aVelocity); // note return a variabel of type INT
+  }
+
+  if (key == 's' || key == 'S' ) {
+    sChannel = 1;
+    sNote = 61;
+    sVelocity = 127;
+    sSuccess = output.sendNoteOn(sChannel, sNote, sVelocity); // note return a variabel of type INT
+  }
+
+  if (key == 'd' || key == 'D' ) {
+    dChannel = 1;
+    dNote = 62;
+    dVelocity = 127;
+    dSuccess = output.sendNoteOn(dChannel, dNote, dVelocity); // note return a variabel of type INT
+
+  }
+
+  if (key == 'f' || key == 'F' ) {
+    fChannel = 1;
+    fNote = 63;
+    fVelocity = 127;
+    fSuccess = output.sendNoteOn(fChannel, fNote, fVelocity); // note return a variabel of type INT
+
+  }
+
+}
+
+
+
+
 
 // user-tracking callbacks!
 void onNewUser(int userId) {
@@ -128,9 +191,4 @@ void onStartPose(String pose, int userId) {
 }
 
 
-void stop() { 
-    player.close(); 
-    minim.stop();
-    super.stop();
-}
 
