@@ -15,6 +15,8 @@ int aSuccess,  sSuccess,  dSuccess,  fSuccess;
 
 boolean isClapping = false;
 boolean wasClapping = false;
+boolean beatOn = false;
+boolean wasInEffectBox = false;
 
 void setup() {
   kinect = new SimpleOpenNI(this);
@@ -94,6 +96,14 @@ void draw() {
     float distance_between_hands = sqrt(    pow(convertedRightHand.x - convertedLeftHand.x, 2) + pow(convertedRightHand.y - convertedLeftHand.y,2));
     
     
+    println(convertedRightHand.x + " " + convertedRightHand.y);
+    
+    // Draw toggle box
+     noFill();
+    strokeWeight(3);
+    stroke(0,0,255);
+    rect(590,10,40,40);
+    
     
     // println(distance_between_hands);
      
@@ -104,24 +114,68 @@ void draw() {
         isClapping = false; 
       }
      
-     
+     // If this is a new clap, toggle the state of the beat
      if (!wasClapping && isClapping){
-        aChannel = 1;
-        aNote = 60;
-        aVelocity = 0;
-        aSuccess = output.sendNoteOn(aChannel, aNote, aVelocity); // note return a variabel of type INT
-        println("Hands together" + aSuccess);
-     } //else if (wasClapping && !isClapping){
+       if (beatOn)
+       {  
+         // Turn off beat
+         output.sendNoteOff(0, 3, 3);
+         beatOn = false;
+         println("Beat turned off");
+       } else {
+         // Turn beat on
+         output.sendNoteOn(0, 3, 3);
+          beatOn = true; 
+          println("Beat turned on");
+          
+       }
+     } 
+     
+     // If the beat is on, control the volume
+     if (beatOn)
+     {
+        // Control the volume
+        int volume = min(int(map(max(distance_between_hands,40), 0, 500, 0, 127)), 127); 
+        output.sendController(1, 1, volume);
+        println("Volume is: " + volume);
+        
+        
+            // Calculate angle of hands
+      leftHand.sub(rightHand);
+      leftHand.normalize();
+      PVector handOrientation = new PVector(1,0,0);
+     float angle = degrees(acos(handOrientation.dot(leftHand)));
+       println("Angle: " + angle);
        
        
-       // Just stopped clapping
-       aNote=60;
        
-       aVelocity = int(map(distance_between_hands, 0, 1000, 1, 127));
+       if (convertedRightHand.x >= 590 && convertedRightHand.x <= 630 && convertedRightHand.y <= 50 && convertedRightHand.y >= 10)
+       {
+         
+         if (!wasInEffectBox)
+         {
+             output.sendNoteOn(2, 1, 1);
+             println("Just entered effect box");
+         } 
+          wasInEffectBox = true; 
+       } else {
+          wasInEffectBox = false; 
+       }
        
-       //aSuccess = output.sendNoteOff(aChannel, aNote, aVelocity); // note return a variabel of type INT
-       println("Hands apart: " + aVelocity);
-    // }
+        
+        // Show the indicator
+        stroke(255,0,0);
+        fill(255,0,0);
+        rect(10,10,40,40);
+     } else {
+        // Show an empty indicator -- beat is off
+        noFill();
+        strokeWeight(3);
+        stroke(255,0,0);
+        rect(10,10,40,40);
+     }
+       
+  
 
   wasClapping = isClapping;  
     }
@@ -133,10 +187,8 @@ void draw() {
 void keyPressed(){
 
   if (key == 'a' || key == 'A' ) {
-    aChannel = 1;
-    aNote = 60;
-    aVelocity = 127;
-    aSuccess = output.sendNoteOn(aChannel, aNote, aVelocity); // note return a variabel of type INT
+    // Toggle effect
+    output.sendNoteOn(2, 1, 1);
   }
 
   if (key == 's' || key == 'S' ) {
